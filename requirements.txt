@@ -1,0 +1,5 @@
+fastapi
+uvicorn
+TTS
+ffmpeg-python
+python-multipart
