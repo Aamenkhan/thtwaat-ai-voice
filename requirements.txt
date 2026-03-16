@@ -1,8 +1,5 @@
 fastapi
 uvicorn
-TTS
 ffmpeg-python
 python-multipart
 moviepy
-diffusers
-torch
