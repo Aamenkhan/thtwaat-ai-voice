@@ -5,3 +5,4 @@ python-multipart
 moviepy
 flask
 celery
+TTS
