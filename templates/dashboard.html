@@ -1,38 +1,44 @@
 <!DOCTYPE html>
 <html>
 <head>
-
 <title>Thtwaat AI Studio</title>
 
 <style>
 
 body{
-font-family: Arial;
-background:#f5f6fa;
-padding:40px;
+font-family:Arial;
+background:#0f172a;
+color:white;
+text-align:center;
 }
 
 .container{
-max-width:700px;
+width:700px;
 margin:auto;
-background:white;
-padding:30px;
-border-radius:10px;
+margin-top:80px;
+}
+
+textarea{
+width:100%;
+height:120px;
+padding:10px;
+font-size:16px;
+border-radius:8px;
+border:none;
 }
 
 button{
-padding:10px 20px;
-background:#007bff;
-color:white;
+background:#22c55e;
 border:none;
-border-radius:6px;
+padding:15px 25px;
+font-size:16px;
+border-radius:8px;
 cursor:pointer;
+margin-top:20px;
 }
 
-input{
-padding:10px;
-width:100%;
-margin-bottom:10px;
+button:hover{
+background:#16a34a;
 }
 
 </style>
@@ -45,50 +51,41 @@ margin-bottom:10px;
 
 <h1>Thtwaat AI Studio</h1>
 
-<h2>1. Topic</h2>
+<p>Create AI Video Automatically</p>
 
-<form action="/generate_script" method="post">
-<input type="text" name="topic" placeholder="Enter topic">
-<button type="submit">Generate Script</button>
-</form>
+<textarea id="topic" placeholder="Enter video topic"></textarea>
 
+<br>
 
-<h2>2. Upload Voice Sample</h2>
+<button onclick="generateVideo()">Generate AI Video</button>
 
-<form action="/upload_voice" method="post" enctype="multipart/form-data">
-<input type="file" name="file">
-<button type="submit">Upload Voice</button>
-</form>
-
-
-<h2>3. Generate Voice</h2>
-
-<form action="/generate_voice" method="post">
-<button type="submit">Generate Voice</button>
-</form>
-
-
-<h2>4. Generate Images</h2>
-
-<form action="/generate_images" method="post">
-<button type="submit">Generate Images</button>
-</form>
-
-
-<h2>5. Generate Video</h2>
-
-<form action="/generate_video" method="post">
-<button type="submit">Generate Video</button>
-</form>
-
-
-<h2>6. Download Video</h2>
-
-<a href="/download_video">
-<button>Download Video</button>
-</a>
+<p id="status"></p>
 
 </div>
+
+<script>
+
+async function generateVideo(){
+
+let topic = document.getElementById("topic").value
+
+document.getElementById("status").innerText="Generating video..."
+
+let response = await fetch("/generate_full_video",{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({topic:topic})
+})
+
+let data = await response.json()
+
+document.getElementById("status").innerText=data.status
+
+}
+
+</script>
 
 </body>
 </html>

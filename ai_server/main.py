@@ -1,18 +1,21 @@
-﻿﻿from fastapi import FastAPI, Request, UploadFile, File, Form
-from fastapi.responses import HTMLResponse, FileResponse
+﻿﻿from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-import subprocess
-import shutil
+from fastapi import Request
 
 app = FastAPI()
 
 templates = Jinja2Templates(directory="templates")
 
-
-# Dashboard
 @app.get("/", response_class=HTMLResponse)
 def dashboard(request: Request):
     return templates.TemplateResponse("dashboard.html", {"request": request})
+
+
+import uvicorn
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=10000)
 
 
 # Generate Script
