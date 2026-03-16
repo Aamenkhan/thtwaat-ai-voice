@@ -1,0 +1,9 @@
+*.mp4
+*.png
+*.wav
+*.mp3
+temp_*
+voice_*
+final_video*
+__pycache__/
+venv/
