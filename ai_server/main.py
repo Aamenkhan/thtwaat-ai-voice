@@ -1,21 +1,20 @@
-﻿﻿from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+﻿﻿from fastapi import FastAPI, Request, Form, UploadFile, File
+from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.templating import Jinja2Templates
-from fastapi import Request
+
+import subprocess
+import shutil
+import uvicorn
 
 app = FastAPI()
 
 templates = Jinja2Templates(directory="templates")
 
+
+# Dashboard
 @app.get("/", response_class=HTMLResponse)
 def dashboard(request: Request):
     return templates.TemplateResponse("dashboard.html", {"request": request})
-
-
-import uvicorn
-
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=10000)
 
 
 # Generate Script
@@ -47,7 +46,7 @@ def generate_voice():
     return {"status": "voice generated"}
 
 
-# Generate Images Automatically
+# Generate Images
 @app.post("/generate_images")
 def generate_images():
 
@@ -76,19 +75,18 @@ def download_video():
     )
 
 
+# Full AI Video Pipeline
 @app.post("/generate_full_video")
-def generate_full_video(topic: str):
+def generate_full_video(topic: str = Form(...)):
 
-    # Step 1 Research + Script
     generate_script(topic)
-
-    # Step 2 Voice
     generate_voice()
-
-    # Step 3 Images
     generate_images()
-
-    # Step 4 Video
     generate_video()
 
     return {"status": "AI video generated"}
+
+
+# Start Server
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=10000)
