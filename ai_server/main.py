@@ -10,21 +10,16 @@ HTML_PAGE = """
 <head>
 <title>Thtwaat AI Voice Studio</title>
 </head>
+
 <body style="text-align:center;font-family:Arial">
 
 <h1>Thtwaat AI Voice Studio</h1>
 
-<form action="/generate" method="post" enctype="multipart/form-data">
+<form action="/generate" method="post">
 
 <p>Paste your Script</p>
 
 <textarea name="text" rows="10" cols="60"></textarea>
-
-<br><br>
-
-<p>Upload your Voice Sample</p>
-
-<input type="file" name="voice">
 
 <br><br>
 
@@ -40,11 +35,6 @@ HTML_PAGE = """
 def home():
     return render_template_string(HTML_PAGE)
 
-
-@app.route("/generate", methods=["POST"])
-
-from gtts import gTTS
-
 @app.route("/generate", methods=["POST"])
 def generate():
 
@@ -55,26 +45,8 @@ def generate():
     tts = gTTS(text)
     tts.save(filename)
 
-    return send_file(filename)
-
-    text = request.form.get("text")
-    voice = request.files["voice"]
-
-    # save voice sample
-    speaker_path = "speaker.wav"
-    voice.save(speaker_path)
-
-    # output file
-    output_file = f"voice_{uuid.uuid4()}.wav"
-
-    print("Generating voice...")
-
-    from gtts import 
-def g
-    print("Voice generated:", output_file)
-
-    return send_file(output_file, as_attachment=True)
+    return send_file(filename, as_attachment=True)
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run()
