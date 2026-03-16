@@ -1,13 +1,9 @@
 from flask import Flask, request, send_file, render_template_string
-from TTS.api import TTS
+from gtts import gTTS
 import uuid
 import os
 
 app = Flask(__name__)
-
-# XTTS model load
-print("Loading XTTS model...")
-tts = TTS(model_name="tts_models/multilingual/multi-dataset/xtts_v2")
 
 HTML_PAGE = """
 <html>
@@ -46,7 +42,20 @@ def home():
 
 
 @app.route("/generate", methods=["POST"])
+
+from gtts import gTTS
+
+@app.route("/generate", methods=["POST"])
 def generate():
+
+    text = request.form.get("text")
+
+    filename = f"voice_{uuid.uuid4()}.mp3"
+
+    tts = gTTS(text)
+    tts.save(filename)
+
+    return send_file(filename)
 
     text = request.form.get("text")
     voice = request.files["voice"]
@@ -60,13 +69,8 @@ def generate():
 
     print("Generating voice...")
 
-    tts.tts_to_file(
-        text=text,
-        speaker_wav=speaker_path,
-        language="en",
-        file_path=output_file
-    )
-
+    from gtts import 
+def g
     print("Voice generated:", output_file)
 
     return send_file(output_file, as_attachment=True)
