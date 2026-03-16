@@ -3,3 +3,4 @@ uvicorn
 ffmpeg-python
 python-multipart
 moviepy
+flask
