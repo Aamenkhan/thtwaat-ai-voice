@@ -4,3 +4,4 @@ ffmpeg-python
 python-multipart
 moviepy
 gTTS
+flask
