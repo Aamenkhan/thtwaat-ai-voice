@@ -3,6 +3,4 @@ uvicorn
 ffmpeg-python
 python-multipart
 moviepy
-flask
-celery
 gTTS
