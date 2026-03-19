@@ -1,91 +1,420 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>Thtwaat AI Studio</title>
-
-<style>
-
-body{
-font-family:Arial;
-background:#0f172a;
-color:white;
-text-align:center;
-}
-
-.container{
-width:700px;
-margin:auto;
-margin-top:80px;
-}
-
-textarea{
-width:100%;
-height:120px;
-padding:10px;
-font-size:16px;
-border-radius:8px;
-border:none;
-}
-
-button{
-background:#22c55e;
-border:none;
-padding:15px 25px;
-font-size:16px;
-border-radius:8px;
-cursor:pointer;
-margin-top:20px;
-}
-
-button:hover{
-background:#16a34a;
-}
-
-</style>
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thtwaat AI Studio - Professional AI Video Creation</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+        }
+        .hero-section {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 3rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        .feature-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+        .btn-modern {
+            background: linear-gradient(45deg, #22c55e, #16a34a);
+            border: none;
+            border-radius: 25px;
+            padding: 12px 30px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-modern:hover {
+            background: linear-gradient(45deg, #16a34a, #15803d);
+            transform: scale(1.05);
+        }
+        .form-control-modern {
+            border-radius: 10px;
+            border: 2px solid #e2e8f0;
+            padding: 12px;
+            transition: border-color 0.3s ease;
+        }
+        .form-control-modern:focus {
+            border-color: #22c55e;
+            box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+        }
+        .status-message {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 10px;
+            display: none;
+        }
+        .status-success {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+        .status-info {
+            background-color: #dbeafe;
+            color: #1e40af;
+        }
+    </style>
 </head>
-
 <body>
+    <div class="container-fluid py-5">
+        <div class="container">
+            <!-- Hero Section -->
+            <div class="hero-section text-center text-white">
+                <h1 class="display-4 fw-bold mb-3">
+                    <i class="fas fa-video me-3"></i>Thtwaat AI Studio
+                </h1>
+                <p class="lead mb-0">Create Professional AI-Generated Documentaries with Voice Synthesis</p>
+            </div>
 
-<div class="container">
+            <!-- Main Content -->
+            <div class="row">
+                <!-- Full Video Generation -->
+                <div class="col-lg-8 mx-auto">
+                    <div class="feature-card">
+                        <div class="text-center mb-4">
+                            <i class="fas fa-magic fa-3x text-success mb-3"></i>
+                            <h3 class="fw-bold">AI Video Generator</h3>
+                            <p class="text-muted">Enter a topic and let AI create a complete documentary video</p>
+                        </div>
+                        
+                        <form id="videoForm" class="mb-4">
+                            <div class="mb-3">
+                                <label for="topic" class="form-label fw-semibold">Video Topic</label>
+                                <textarea 
+                                    class="form-control form-control-modern" 
+                                    id="topic" 
+                                    rows="4" 
+                                    placeholder="Enter your documentary topic (e.g., 'The History of Artificial Intelligence')"
+                                    required
+                                ></textarea>
+                            </div>
+                            <div class="text-center">
+                                <button type="submit" class="btn btn-modern btn-lg">
+                                    <i class="fas fa-play me-2"></i>Generate AI Video
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <div id="status" class="status-message"></div>
+                    </div>
+                </div>
+            </div>
 
-<h1>Thtwaat AI Studio</h1>
+            <!-- Additional Features -->
+            <div class="row mt-4">
+                <div class="col-md-6 col-lg-3 mb-3">
+                    <div class="feature-card text-center">
+                        <i class="fas fa-file-alt fa-2x text-primary mb-2"></i>
+                        <h5>Generate Script</h5>
+                        <button class="btn btn-outline-primary btn-sm" onclick="generateScript()">
+                            <i class="fas fa-plus me-1"></i>Create
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3 mb-3">
+                    <div class="feature-card">
+                        <div class="text-center mb-2">
+                            <i class="fas fa-edit fa-2x text-secondary"></i>
+                        </div>
+                        <h5 class="text-center">Custom Script</h5>
+                        <textarea id="customScript" class="form-control form-control-modern mb-2" rows="3" placeholder="Paste your script here..."></textarea>
+                        <button class="btn btn-outline-secondary btn-sm w-100" onclick="uploadCustomScript()">
+                            <i class="fas fa-upload me-1"></i>Add Script
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3 mb-3">
+                    <div class="feature-card text-center">
+                        <i class="fas fa-microphone fa-2x text-info mb-2"></i>
+                        <h5>Upload Voice Sample</h5>
+                        <p class="text-muted small mb-2">Upload your voice for AI cloning</p>
+                        <input type="file" id="voiceFile" class="d-none" accept="audio/*">
+                        <button class="btn btn-outline-info btn-sm" onclick="document.getElementById('voiceFile').click()">
+                            <i class="fas fa-upload me-1"></i>Upload My Voice
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-6 mb-3">
+                    <div class="feature-card">
+                        <div class="text-center mb-3">
+                            <i class="fas fa-volume-up fa-2x text-warning mb-2"></i>
+                            <h5>Voice Controls</h5>
+                        </div>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <button class="btn btn-outline-warning btn-sm w-100" onclick="generateVoice()">
+                                    <i class="fas fa-play me-1"></i>Synthesize
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button class="btn btn-outline-success btn-sm w-100" onclick="improveQuality()">
+                                    <i class="fas fa-star me-1"></i>Improve Quality
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button class="btn btn-outline-primary btn-sm w-100" onclick="pitchUp()">
+                                    <i class="fas fa-arrow-up me-1"></i>Pitch Up
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button class="btn btn-outline-primary btn-sm w-100" onclick="pitchDown()">
+                                    <i class="fas fa-arrow-down me-1"></i>Pitch Down
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button class="btn btn-outline-info btn-sm w-100" onclick="volumeUp()">
+                                    <i class="fas fa-volume-up me-1"></i>Volume Up
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button class="btn btn-outline-info btn-sm w-100" onclick="volumeDown()">
+                                    <i class="fas fa-volume-down me-1"></i>Volume Down
+                                </button>
+                            </div>
+                        </div>
+                        <hr class="my-3">
+                        <div class="text-center">
+                            <a href="/download_voice" class="btn btn-success btn-sm">
+                                <i class="fas fa-download me-1"></i>Download MP3
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3 mb-3">
+                    <div class="feature-card text-center">
+                        <i class="fas fa-images fa-2x text-danger mb-2"></i>
+                        <h5>Generate Images</h5>
+                        <button class="btn btn-outline-danger btn-sm" onclick="generateImages()">
+                            <i class="fas fa-image me-1"></i>Create
+                        </button>
+                    </div>
+                </div>
+            </div>
 
-<p>Create AI Video Automatically</p>
+            <!-- Download Section -->
+            <div class="row mt-4">
+                <div class="col-lg-6 mx-auto">
+                    <div class="feature-card text-center">
+                        <i class="fas fa-download fa-2x text-success mb-2"></i>
+                        <h5>Download Video</h5>
+                        <p class="text-muted small">Your generated video will be available here</p>
+                        <a id="downloadLink" href="/download_video" class="btn btn-success btn-sm d-none">
+                            <i class="fas fa-download me-1"></i>Download Video
+                        </a>
+                        <div id="downloadStatus" class="text-muted small mt-2"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-<textarea id="topic" placeholder="Enter video topic"></textarea>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const statusDiv = document.getElementById('status');
+        const downloadLink = document.getElementById('downloadLink');
+        const downloadStatus = document.getElementById('downloadStatus');
 
-<br>
+        // Full video generation
+        document.getElementById('videoForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const topic = document.getElementById('topic').value;
+            
+            showStatus('Generating your AI video... This may take several minutes.', 'info');
+            
+            try {
+                const response = await fetch('/generate_full_video', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({ topic: topic })
+                });
+                
+                const data = await response.json();
+                showStatus(data.status || 'Video generation completed!', 'success');
+                
+                // Show download link
+                downloadLink.classList.remove('d-none');
+                downloadStatus.textContent = 'Video ready for download';
+                
+            } catch (error) {
+                showStatus('Error generating video. Please try again.', 'danger');
+                console.error('Error:', error);
+            }
+        });
 
-<button onclick="generateVideo()">Generate AI Video</button>
+        // Individual functions
+        async function generateScript() {
+            const topic = document.getElementById('topic').value;
+            if (!topic) {
+                alert('Please enter a topic first');
+                return;
+            }
+            
+            showStatus('Generating script...', 'info');
+            try {
+                const response = await fetch('/generate_script', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({ topic: topic })
+                });
+                const data = await response.json();
+                showStatus(data.status, 'success');
+            } catch (error) {
+                showStatus('Error generating script', 'danger');
+            }
+        }
 
-<p id="status"></p>
+        async function generateVoice() {
+            showStatus('Generating voice...', 'info');
+            try {
+                const response = await fetch('/generate_voice', { method: 'POST' });
+                const data = await response.json();
+                showStatus(data.status, 'success');
+            } catch (error) {
+                showStatus('Error generating voice', 'danger');
+            }
+        }
 
-</div>
+        async function improveQuality() {
+            showStatus('Improving voice quality...', 'info');
+            try {
+                const response = await fetch('/improve_quality', { method: 'POST' });
+                const data = await response.json();
+                showStatus(data.status, 'success');
+            } catch (error) {
+                showStatus('Error improving quality', 'danger');
+            }
+        }
 
-<script>
+        async function pitchUp() {
+            showStatus('Increasing pitch...', 'info');
+            try {
+                const response = await fetch('/pitch_up', { method: 'POST' });
+                const data = await response.json();
+                showStatus(data.status, 'success');
+            } catch (error) {
+                showStatus('Error adjusting pitch', 'danger');
+            }
+        }
 
-async function generateVideo(){
+        async function pitchDown() {
+            showStatus('Decreasing pitch...', 'info');
+            try {
+                const response = await fetch('/pitch_down', { method: 'POST' });
+                const data = await response.json();
+                showStatus(data.status, 'success');
+            } catch (error) {
+                showStatus('Error adjusting pitch', 'danger');
+            }
+        }
 
-let topic = document.getElementById("topic").value
+        async function volumeUp() {
+            showStatus('Increasing volume...', 'info');
+            try {
+                const response = await fetch('/volume_up', { method: 'POST' });
+                const data = await response.json();
+                showStatus(data.status, 'success');
+            } catch (error) {
+                showStatus('Error adjusting volume', 'danger');
+            }
+        }
 
-document.getElementById("status").innerText="Generating video..."
+        async function volumeDown() {
+            showStatus('Decreasing volume...', 'info');
+            try {
+                const response = await fetch('/volume_down', { method: 'POST' });
+                const data = await response.json();
+                showStatus(data.status, 'success');
+            } catch (error) {
+                showStatus('Error adjusting volume', 'danger');
+            }
+        }
 
-let response = await fetch("/generate_full_video",{
-method:"POST",
-headers:{
-"Content-Type":"application/json"
-},
-body:JSON.stringify({topic:topic})
-})
+        async function generateImages() {
+            showStatus('Generating images...', 'info');
+            try {
+                const response = await fetch('/generate_images', { method: 'POST' });
+                const data = await response.json();
+                showStatus(data.status, 'success');
+            } catch (error) {
+                showStatus('Error generating images', 'danger');
+            }
+        }
 
-let data = await response.json()
+        // Voice upload
+        document.getElementById('voiceFile').addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            showStatus('Uploading voice...', 'info');
+            try {
+                const response = await fetch('/upload_voice', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                showStatus(data.status, 'success');
+            } catch (error) {
+                showStatus('Error uploading voice', 'danger');
+            }
+        });
 
-document.getElementById("status").innerText=data.status
+        // Upload custom script
+        async function uploadCustomScript() {
+            const script = document.getElementById('customScript').value;
+            if (!script.trim()) {
+                alert('Please enter a script');
+                return;
+            }
+            
+            showStatus('Uploading custom script...', 'info');
+            try {
+                const response = await fetch('/upload_script', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({ script: script })
+                });
+                const data = await response.json();
+                showStatus(data.status, 'success');
+            } catch (error) {
+                showStatus('Error uploading script', 'danger');
+            }
+        }
 
-}
-
-</script>
-
+        function showStatus(message, type) {
+            statusDiv.className = `status-message alert alert-${type}`;
+            statusDiv.textContent = message;
+            statusDiv.style.display = 'block';
+            
+            // Auto-hide after 5 seconds for success
+            if (type === 'success') {
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 5000);
+            }
+        }
+    </script>
 </body>
 </html>
