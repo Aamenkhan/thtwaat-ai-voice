@@ -1,9 +1,4 @@
 fastapi
 uvicorn
-ffmpeg-python
-moviepy
-diffusers
-torch
 openai
 jinja2
-TTS
