@@ -7,3 +7,9 @@ voice_*
 final_video*
 __pycache__/
 venv/
+.env
+*.env
+node_modules/
+.idea/
+.vscode/
+.continue/
