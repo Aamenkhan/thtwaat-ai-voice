@@ -1,8 +1,4 @@
-import asyncio
-import logging
-import os
-import sys
-import uuid
+import asyncio, logging, os, sys, uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Dict, List
@@ -14,290 +10,203 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
-logger = logging.getLogger("thtwaat")
+log = logging.getLogger("thtwaat")
 
-# ---------------------------------------------------------------------------
-# Paths — works regardless of cwd
-# ---------------------------------------------------------------------------
-BASE_DIR   = Path(__file__).resolve().parent.parent   # ai_server/
-STATIC_DIR = BASE_DIR / "static"
-TMPL_DIR   = BASE_DIR.parent / "templates"
+BASE   = Path(__file__).resolve().parent.parent
+STATIC = BASE / "static"
+TMPL   = BASE.parent / "templates"
 
-STATIC_DIR.mkdir(parents=True, exist_ok=True)
-(STATIC_DIR / "images").mkdir(exist_ok=True)
+STATIC.mkdir(parents=True, exist_ok=True)
+(STATIC / "images").mkdir(exist_ok=True)
 
-if str(BASE_DIR) not in sys.path:
-    sys.path.insert(0, str(BASE_DIR))
+if str(BASE) not in sys.path:
+    sys.path.insert(0, str(BASE))
 
-# ---------------------------------------------------------------------------
-# Safe module loader
-# ---------------------------------------------------------------------------
-def _load(name: str):
+def _load(n):
     try:
-        m = __import__(name)
-        logger.info("loaded: %s", name)
-        return m
+        m = __import__(n); log.info("ok: %s", n); return m
     except Exception as e:
-        logger.warning("skipped %s — %s", name, e)
-        return None
+        log.warning("skip: %s — %s", n, e); return None
 
-research_engine   = _load("research_engine")
-deep_script       = _load("deep_script")
-voice_engine      = _load("voice_engine")
-image_generator   = _load("image_generator")
-video_generator   = _load("video_generator")
-ai_recommendation = _load("ai_recommendation")
+re_mod = _load("research_engine")
+ds_mod = _load("deep_script")
+vo_mod = _load("voice_engine")
+ig_mod = _load("image_generator")
+vg_mod = _load("video_generator")
+ai_mod = _load("ai_recommendation")
 
-# ---------------------------------------------------------------------------
-# App
-# ---------------------------------------------------------------------------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Thtwaat AI starting …")
-    yield
+    log.info("starting…"); yield
 
-app = FastAPI(title="Thtwaat AI Voice", version="2.0.0", lifespan=lifespan)
+app = FastAPI(lifespan=lifespan)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-    allow_credentials=True,
-)
+app.add_middleware(CORSMiddleware, allow_origins=["*"],
+                   allow_methods=["*"], allow_headers=["*"], allow_credentials=True)
 
-# Static files — skip if dir somehow vanished
 try:
-    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+    app.mount("/static", StaticFiles(directory=str(STATIC)), name="static")
 except Exception as e:
-    logger.warning("Static mount skipped: %s", e)
+    log.warning("static skip: %s", e)
 
-# Jinja2 — optional
-_templates = None
+_tpl = None
 try:
-    if TMPL_DIR.exists():
+    if TMPL.exists():
         from fastapi.templating import Jinja2Templates
-        _templates = Jinja2Templates(directory=str(TMPL_DIR))
+        _tpl = Jinja2Templates(directory=str(TMPL))
 except Exception:
     pass
 
-# ---------------------------------------------------------------------------
-# Models
-# ---------------------------------------------------------------------------
-class ResearchRequest(BaseModel):
-    topic: str    = Field(..., min_length=1, max_length=500)
-    language: str = Field(default="ar")
+class RR(BaseModel):
+    topic: str     = Field(..., min_length=1, max_length=500)
+    language: str  = Field(default="ar")
 
-class ScriptRequest(BaseModel):
+class SR(BaseModel):
     research_data: str = Field(..., min_length=1)
     style: str         = Field(default="educational")
 
-class VoiceRequest(BaseModel):
-    script:       str  = Field(..., min_length=1)
-    age:          str  = Field(default="young_adult")
-    gender:       str  = Field(default="neutral")
+class VoR(BaseModel):
+    script: str        = Field(..., min_length=1)
+    age: str           = Field(default="young_adult")
+    gender: str        = Field(default="neutral")
     reduce_noise: bool = Field(default=True)
 
-class VideoRequest(BaseModel):
-    script:     str       = Field(..., min_length=1)
-    voice_path: str       = Field(...)
-    image_urls: List[str] = Field(default_factory=list)
+class ViR(BaseModel):
+    script: str            = Field(..., min_length=1)
+    voice_path: str        = Field(...)
+    image_urls: List[str]  = Field(default_factory=list)
 
-# ---------------------------------------------------------------------------
-# Core routes
-# ---------------------------------------------------------------------------
 @app.get("/")
 async def root():
-    return JSONResponse({"status": "API working", "version": "2.0.0"})
+    return JSONResponse({"message": "API working 🚀"})
 
 @app.get("/health")
 async def health():
-    return JSONResponse({
-        "status": "ok",
-        "modules": {
-            "research_engine":   research_engine   is not None,
-            "deep_script":       deep_script       is not None,
-            "voice_engine":      voice_engine      is not None,
-            "image_generator":   image_generator   is not None,
-            "video_generator":   video_generator   is not None,
-            "ai_recommendation": ai_recommendation is not None,
-        },
-    })
+    return JSONResponse({"status": "ok", "modules": {
+        "research": re_mod is not None, "script": ds_mod is not None,
+        "voice":    vo_mod is not None, "image":  ig_mod is not None,
+        "video":    vg_mod is not None, "ai":     ai_mod is not None,
+    }})
+
+def _page(req, tpl):
+    if _tpl:
+        return _tpl.TemplateResponse(tpl, {"request": req})
+    return JSONResponse({"page": tpl})
 
 @app.get("/dashboard")
-async def dashboard(request: Request):
-    if _templates:
-        return _templates.TemplateResponse("dashboard.html", {"request": request})
-    return JSONResponse({"page": "dashboard", "templates": "unavailable"})
-
+async def dashboard(request: Request): return _page(request, "dashboard.html")
 @app.get("/analytics")
-async def analytics(request: Request):
-    if _templates:
-        return _templates.TemplateResponse("analytics.html", {"request": request})
-    return JSONResponse({"page": "analytics", "templates": "unavailable"})
-
+async def analytics(request: Request): return _page(request, "analytics.html")
 @app.get("/marketplace")
-async def marketplace(request: Request):
-    if _templates:
-        return _templates.TemplateResponse("marketplace.html", {"request": request})
-    return JSONResponse({"page": "marketplace", "templates": "unavailable"})
+async def marketplace(request: Request): return _page(request, "marketplace.html")
 
-# ---------------------------------------------------------------------------
-# API routes
-# ---------------------------------------------------------------------------
 @app.post("/api/research")
-async def api_research(req: ResearchRequest):
-    if not research_engine:
-        raise HTTPException(503, "research_engine unavailable")
+async def api_research(req: RR):
+    if not re_mod: raise HTTPException(503, "research_engine unavailable")
     try:
-        data = await asyncio.to_thread(research_engine.run, req.topic, req.language)
+        data = await asyncio.to_thread(re_mod.run, req.topic, req.language)
         return JSONResponse({"status": "ok", "data": data})
-    except Exception as e:
-        raise HTTPException(500, str(e))
+    except Exception as e: raise HTTPException(500, str(e))
 
 @app.post("/api/script")
-async def api_script(req: ScriptRequest):
-    if not deep_script:
-        raise HTTPException(503, "deep_script unavailable")
+async def api_script(req: SR):
+    if not ds_mod: raise HTTPException(503, "deep_script unavailable")
     try:
-        script = await asyncio.to_thread(deep_script.generate, req.research_data, req.style)
-        return JSONResponse({"status": "ok", "script": script})
-    except Exception as e:
-        raise HTTPException(500, str(e))
+        s = await asyncio.to_thread(ds_mod.generate, req.research_data, req.style)
+        return JSONResponse({"status": "ok", "script": s})
+    except Exception as e: raise HTTPException(500, str(e))
 
 @app.post("/api/voice")
-async def api_voice(req: VoiceRequest):
-    if not voice_engine:
-        raise HTTPException(503, "voice_engine unavailable")
+async def api_voice(req: VoR):
+    if not vo_mod: raise HTTPException(503, "voice_engine unavailable")
     try:
-        name = f"voice_{uuid.uuid4().hex}.wav"
-        path = str(STATIC_DIR / name)
-        await asyncio.to_thread(
-            voice_engine.synthesize_advanced,
-            text=req.script,
-            output_path=path,
-            language="hi",
-            age=req.age,
-            gender=req.gender,
-            reduce_noise=req.reduce_noise,
-        )
-        return JSONResponse({"status": "ok", "output_path": f"/static/{name}"})
-    except Exception as e:
-        raise HTTPException(500, str(e))
+        n = f"voice_{uuid.uuid4().hex}.wav"
+        await asyncio.to_thread(vo_mod.synthesize_advanced, text=req.script,
+            output_path=str(STATIC/n), language="hi",
+            age=req.age, gender=req.gender, reduce_noise=req.reduce_noise)
+        return JSONResponse({"status": "ok", "output_path": f"/static/{n}"})
+    except Exception as e: raise HTTPException(500, str(e))
 
 @app.post("/api/generate-video")
-async def api_generate_video(req: VideoRequest):
-    if not video_generator:
-        raise HTTPException(503, "video_generator unavailable")
+async def api_video(req: ViR):
+    if not vg_mod: raise HTTPException(503, "video_generator unavailable")
     try:
-        audio_path  = str(STATIC_DIR / Path(req.voice_path).name)
-        image_paths: List[str] = []
+        audio = str(STATIC / Path(req.voice_path).name)
+        imgs: List[str] = []
         if req.image_urls:
             import requests as _r
             for i, url in enumerate(req.image_urls):
-                dest = str(STATIC_DIR / "images" / f"img_{uuid.uuid4().hex[:6]}_{i}.jpg")
+                dest = str(STATIC/"images"/f"img_{uuid.uuid4().hex[:6]}_{i}.jpg")
                 try:
-                    r = _r.get(url, timeout=10)
-                    r.raise_for_status()
-                    Path(dest).write_bytes(r.content)
-                    image_paths.append(dest)
-                except Exception:
-                    logger.warning("Could not fetch: %s", url)
-        video_path = await asyncio.to_thread(
-            video_generator.assemble, req.script, audio_path, image_paths or None
-        )
-        if not video_path:
-            raise HTTPException(500, "Video assembly failed")
-        return JSONResponse({"status": "ok", "video_path": video_path})
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(500, str(e))
+                    r = _r.get(url, timeout=10); r.raise_for_status()
+                    Path(dest).write_bytes(r.content); imgs.append(dest)
+                except Exception: pass
+        vp = await asyncio.to_thread(vg_mod.assemble, req.script, audio, imgs or None)
+        if not vp: raise HTTPException(500, "assembly failed")
+        return JSONResponse({"status": "ok", "video_path": vp})
+    except HTTPException: raise
+    except Exception as e: raise HTTPException(500, str(e))
 
 @app.get("/api/recommendations")
-async def api_recommendations(context: str = "general"):
-    if not ai_recommendation:
-        raise HTTPException(503, "ai_recommendation unavailable")
+async def api_recs(context: str = "general"):
+    if not ai_mod: raise HTTPException(503, "ai_recommendation unavailable")
     try:
-        recs = await asyncio.to_thread(ai_recommendation.get_recommendations, context)
-        return JSONResponse({"status": "ok", "recommendations": recs})
-    except Exception as e:
-        raise HTTPException(500, str(e))
+        r = await asyncio.to_thread(ai_mod.get_recommendations, context)
+        return JSONResponse({"status": "ok", "recommendations": r})
+    except Exception as e: raise HTTPException(500, str(e))
 
-# ---------------------------------------------------------------------------
-# Full pipeline
-# ---------------------------------------------------------------------------
 _jobs: Dict[str, Dict[str, Any]] = {}
 
-def _run_pipeline(job_id: str, topic: str, language: str):
+def _pipeline(job_id: str, topic: str, lang: str):
     _jobs[job_id]["status"] = "running"
     try:
         _jobs[job_id]["step"] = "research"
-        research_data = (
-            research_engine.run(topic, language) if research_engine else f"Placeholder: {topic}"
-        )
+        rd = re_mod.run(topic, lang) if re_mod else f"Placeholder: {topic}"
         _jobs[job_id]["step"] = "script"
-        script = deep_script.generate(research_data) if deep_script else research_data
-
+        sc = ds_mod.generate(rd) if ds_mod else rd
         _jobs[job_id]["step"] = "voice"
-        voice_name = f"voice_{job_id}.wav"
-        if voice_engine:
-            voice_engine.synthesize_advanced(
-                script, language=language,
-                output_path=str(STATIC_DIR / voice_name), reduce_noise=True,
-            )
-
+        vn = f"voice_{job_id}.wav"
+        if vo_mod:
+            vo_mod.synthesize_advanced(sc, language=lang,
+                output_path=str(STATIC/vn), reduce_noise=True)
         _jobs[job_id]["step"] = "images"
-        images = image_generator.generate(script, 3) if image_generator else []
-
-        _jobs[job_id].update({
-            "status": "done", "step": "complete",
-            "script": script, "images": images,
-            "voice_path": f"/static/{voice_name}",
-        })
+        imgs = ig_mod.generate(sc, 3) if ig_mod else []
+        _jobs[job_id].update({"status": "done", "step": "complete", "script": sc,
+                               "images": imgs, "voice_path": f"/static/{vn}"})
     except Exception as e:
-        logger.exception("Pipeline %s failed", job_id)
         _jobs[job_id].update({"status": "error", "detail": str(e)})
 
 @app.post("/api/pipeline")
-async def api_pipeline(req: ResearchRequest, bg: BackgroundTasks):
-    job_id = str(uuid.uuid4())
-    _jobs[job_id] = {"status": "queued", "step": "starting", "topic": req.topic}
-    bg.add_task(_run_pipeline, job_id, req.topic, req.language)
-    return JSONResponse({"job_id": job_id, "status": "queued"})
+async def api_pipeline(req: RR, bg: BackgroundTasks):
+    jid = str(uuid.uuid4())
+    _jobs[jid] = {"status": "queued", "step": "starting", "topic": req.topic}
+    bg.add_task(_pipeline, jid, req.topic, req.language)
+    return JSONResponse({"job_id": jid, "status": "queued"})
 
 @app.get("/api/pipeline/{job_id}")
-async def api_pipeline_status(job_id: str):
-    job = _jobs.get(job_id)
-    if not job:
-        raise HTTPException(404, "Job not found")
-    return JSONResponse(job)
+async def api_status(job_id: str):
+    j = _jobs.get(job_id)
+    if not j: raise HTTPException(404, "not found")
+    return JSONResponse(j)
 
-# ---------------------------------------------------------------------------
-# Flutter multipart compat
-# ---------------------------------------------------------------------------
 @app.post("/api/generate")
 async def api_generate(text: str = Form(None), voice: UploadFile = File(None)):
     if not text or not voice:
-        return JSONResponse({"error": "Missing text or voice file"}, status_code=400)
-    if not voice_engine:
-        return JSONResponse({"error": "TTS engine unavailable"}, status_code=503)
-    spk  = str(STATIC_DIR / f"spk_{uuid.uuid4().hex}.wav")
-    name = f"voice_{uuid.uuid4().hex}.wav"
-    out  = str(STATIC_DIR / name)
+        return JSONResponse({"error": "missing text or voice"}, status_code=400)
+    if not vo_mod:
+        return JSONResponse({"error": "TTS unavailable"}, status_code=503)
+    spk = str(STATIC / f"spk_{uuid.uuid4().hex}.wav")
+    out = str(STATIC / f"voice_{uuid.uuid4().hex}.wav")
     try:
         Path(spk).write_bytes(await voice.read())
-        voice_engine.synthesize_advanced(
-            text=text, output_path=out, speaker_wav=spk, language="hi", reduce_noise=True,
-        )
+        vo_mod.synthesize_advanced(text=text, output_path=out,
+            speaker_wav=spk, language="hi", reduce_noise=True)
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
     finally:
-        if os.path.exists(spk):
-            os.remove(spk)
-    return FileResponse(out, filename=name, media_type="audio/wav")
+        if os.path.exists(spk): os.remove(spk)
+    return FileResponse(out, filename=Path(out).name, media_type="audio/wav")
 
-# ---------------------------------------------------------------------------
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
