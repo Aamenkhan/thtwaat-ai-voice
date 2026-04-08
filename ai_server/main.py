@@ -1,25 +1,25 @@
-﻿"""
-main.py – Production-ready FastAPI entry point for thtwaat-ai-voice
+"""
+main.py – Cleaned production-ready FastAPI entry point for thtwaat-ai-voice
 Run with: uvicorn main:app --host 0.0.0.0 --port 8000
 """
 
 import asyncio
 import logging
 import os
-import subprocess
 import sys
+import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict
 
-from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Request, File, Form, UploadFile
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
 # ---------------------------------------------------------------------------
-# Logging – structured, goes to stdout so Render captures it
+# Logging – structured
 # ---------------------------------------------------------------------------
 logging.basicConfig(
     level=logging.INFO,
@@ -29,7 +29,7 @@ logging.basicConfig(
 logger = logging.getLogger("thtwaat")
 
 # ---------------------------------------------------------------------------
-# Optional module imports – fail gracefully so the server still starts
+# Optional module imports – fail gracefully
 # ---------------------------------------------------------------------------
 def _try_import(module_name: str):
     try:
@@ -40,94 +40,47 @@ def _try_import(module_name: str):
         logger.warning("Module '%s' not available: %s", module_name, exc)
         return None
 
-research_engine  = _try_import("research_engine")
-deep_script      = _try_import("deep_script")
-voice_engine     = _try_import("voice_engine")
-image_generator  = _try_import("image_generator")
-video_generator  = _try_import("video_generator")
+research_engine   = _try_import("research_engine")
+deep_script       = _try_import("deep_script")
+voice_engine      = _try_import("voice_engine")
+image_generator   = _try_import("image_generator")
+video_generator   = _try_import("video_generator")
+ai_recommendation = _try_import("ai_recommendation")
 
 # ---------------------------------------------------------------------------
 # Lifespan – startup / shutdown hooks
 # ---------------------------------------------------------------------------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Starting thtwaat-ai-voice …")
-    # Add any heavy one-time init here (model loading, DB pool, etc.)
+    os.makedirs("static/images", exist_ok=True)
+    logger.info("Starting thtwaat-ai-voice engine …")
     yield
-    logger.info("Shutting down thtwaat-ai-voice …")
+    logger.info("Shutting down thtwaat-ai-voice engine …")
 
 # ---------------------------------------------------------------------------
-# App
+# App Initialization
 # ---------------------------------------------------------------------------
 app = FastAPI(
     title="Thtwaat AI Voice",
-    version="1.0.0",
+    version="1.1.0",
     lifespan=lifespan,
 )
 
-# ---------------------------------------------------------------------------
-# Static files & templates
-# ---------------------------------------------------------------------------
 STATIC_DIR = Path("static")
 TEMPLATES_DIR = Path("templates")
 
-if STATIC_DIR.exists():
-    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+if not STATIC_DIR.exists():
+    os.makedirs(STATIC_DIR, exist_ok=True)
 
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
-
-# ---------------------------------------------------------------------------
-# Global exception handler – no more naked 500s
-# ---------------------------------------------------------------------------
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    logger.exception("Unhandled error on %s %s", request.method, request.url)
-    return JSONResponse(
-        status_code=500,
-        content={"error": "Internal server error", "detail": str(exc)},
-    )
-
-# ---------------------------------------------------------------------------
-# Helper: safe subprocess runner
-# ---------------------------------------------------------------------------
-def run_subprocess(cmd: list[str], timeout: int = 120) -> dict[str, Any]:
-    """
-    Run an external command safely (no shell=True).
-    Returns {"returncode": int, "stdout": str, "stderr": str}.
-    Raises RuntimeError on timeout or non-zero exit.
-    """
-    logger.info("Running subprocess: %s", cmd)
-    try:
-        result = subprocess.run(
-            cmd,                    # list – never shell=True
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            check=False,            # we handle non-zero ourselves
-        )
-    except subprocess.TimeoutExpired as exc:
-        raise RuntimeError(f"Subprocess timed out after {timeout}s: {cmd}") from exc
-    except FileNotFoundError as exc:
-        raise RuntimeError(f"Executable not found: {cmd[0]}") from exc
-
-    if result.returncode != 0:
-        logger.error("Subprocess failed (rc=%d): %s", result.returncode, result.stderr)
-        raise RuntimeError(
-            f"Subprocess exited {result.returncode}: {result.stderr.strip()}"
-        )
-
-    return {
-        "returncode": result.returncode,
-        "stdout": result.stdout.strip(),
-        "stderr": result.stderr.strip(),
-    }
 
 # ---------------------------------------------------------------------------
 # Pydantic request models
 # ---------------------------------------------------------------------------
 class ResearchRequest(BaseModel):
     topic: str = Field(..., min_length=1, max_length=500)
-    language: str = Field(default="ar", pattern=r"^[a-z]{2}$")
+    language: str = Field(default="ar")
 
 class ScriptRequest(BaseModel):
     research_data: str = Field(..., min_length=1)
@@ -136,15 +89,9 @@ class ScriptRequest(BaseModel):
 class VoiceRequest(BaseModel):
     script: str = Field(..., min_length=1)
     voice_id: str = Field(default="default")
-
-class ImageRequest(BaseModel):
-    prompt: str = Field(..., min_length=1, max_length=1000)
-    count: int = Field(default=1, ge=1, le=10)
-
-class VideoRequest(BaseModel):
-    script: str = Field(..., min_length=1)
-    voice_path: str = Field(default="")
-    image_paths: list[str] = Field(default_factory=list)
+    age: str = Field(default="young_adult") # kid, teen, young_adult, senior
+    gender: str = Field(default="neutral") # male, female, neutral
+    reduce_noise: bool = Field(default=True)
 
 # ---------------------------------------------------------------------------
 # Routes – Dashboard
@@ -153,9 +100,16 @@ class VideoRequest(BaseModel):
 async def dashboard(request: Request):
     return templates.TemplateResponse("dashboard.html", {"request": request})
 
+@app.get("/analytics", response_class=HTMLResponse)
+async def analytics(request: Request):
+    return templates.TemplateResponse("analytics.html", {"request": request})
+
+@app.get("/marketplace", response_class=HTMLResponse)
+async def marketplace(request: Request):
+    return templates.TemplateResponse("marketplace.html", {"request": request})
+
 @app.get("/health")
 async def health():
-    """Render health-check endpoint."""
     return {
         "status": "ok",
         "modules": {
@@ -164,148 +118,158 @@ async def health():
             "voice_engine":     voice_engine is not None,
             "image_generator":  image_generator is not None,
             "video_generator":  video_generator is not None,
+            "ai_recommendation": ai_recommendation is not None,
         },
     }
+
+@app.get("/api/recommendations")
+async def get_market_recommendations(context: str = "general"):
+    if not ai_recommendation: raise HTTPException(503, "Recommendation engine unavailable")
+    try:
+        recommendations = await asyncio.to_thread(ai_recommendation.get_recommendations, context)
+        return {"status": "ok", "recommendations": recommendations}
+    except Exception as exc:
+        raise HTTPException(500, str(exc))
 
 # ---------------------------------------------------------------------------
 # Routes – Pipeline steps
 # ---------------------------------------------------------------------------
 @app.post("/api/research")
 async def research(req: ResearchRequest):
-    if research_engine is None:
-        raise HTTPException(503, "research_engine module not available")
+    if not research_engine: raise HTTPException(503, "research_engine unavailable")
     try:
-        result = await asyncio.to_thread(
-            research_engine.run, req.topic, req.language
-        )
+        result = await asyncio.to_thread(research_engine.run, req.topic, req.language)
         return {"status": "ok", "data": result}
     except Exception as exc:
-        logger.exception("Research failed")
-        raise HTTPException(500, str(exc)) from exc
-
+        raise HTTPException(500, str(exc))
 
 @app.post("/api/script")
 async def generate_script(req: ScriptRequest):
-    if deep_script is None:
-        raise HTTPException(503, "deep_script module not available")
+    if not deep_script: raise HTTPException(503, "deep_script unavailable")
     try:
-        result = await asyncio.to_thread(
-            deep_script.generate, req.research_data, req.style
-        )
+        result = await asyncio.to_thread(deep_script.generate, req.research_data, req.style)
         return {"status": "ok", "script": result}
     except Exception as exc:
-        logger.exception("Script generation failed")
-        raise HTTPException(500, str(exc)) from exc
-
+        raise HTTPException(500, str(exc))
 
 @app.post("/api/voice")
-async def generate_voice(req: VoiceRequest, background_tasks: BackgroundTasks):
-    if voice_engine is None:
-        raise HTTPException(503, "voice_engine module not available")
+async def generate_voice(req: VoiceRequest):
+    if not voice_engine: raise HTTPException(503, "voice_engine unavailable")
     try:
-        # Heavy TTS – run in thread pool so the event loop stays free
-        output_path = await asyncio.to_thread(
-            voice_engine.synthesize, req.script, req.voice_id
-        )
-        return {"status": "ok", "output_path": str(output_path)}
+        if voice_engine:
+            output_name = f"voice_{uuid.uuid4()}.wav"
+            output_path = STATIC_DIR / output_name
+            # Use synthesize_advanced for micro-level control
+            await asyncio.to_thread(
+                voice_engine.synthesize_advanced,
+                text=req.script,
+                output_path=str(output_path),
+                speaker_wav="speaker.wav",
+                language="hi",
+                age=req.age,
+                gender=req.gender,
+                reduce_noise=req.reduce_noise
+            )
+            return {"status": "ok", "output_path": f"/static/{output_name}"}
+        else:
+            return {"status": "mock", "output_path": "/static/mock_voice.wav"}
     except Exception as exc:
-        logger.exception("Voice generation failed")
-        raise HTTPException(500, str(exc)) from exc
-
-
-@app.post("/api/images")
-async def generate_images(req: ImageRequest):
-    if image_generator is None:
-        raise HTTPException(503, "image_generator module not available")
-    try:
-        paths = await asyncio.to_thread(
-            image_generator.generate, req.prompt, req.count
-        )
-        return {"status": "ok", "image_paths": paths}
-    except Exception as exc:
-        logger.exception("Image generation failed")
-        raise HTTPException(500, str(exc)) from exc
-
-
-@app.post("/api/video")
-async def generate_video(req: VideoRequest):
-    if video_generator is None:
-        raise HTTPException(503, "video_generator module not available")
-    try:
-        output_path = await asyncio.to_thread(
-            video_generator.assemble,
-            req.script,
-            req.voice_path,
-            req.image_paths,
-        )
-        return {"status": "ok", "video_path": str(output_path)}
-    except Exception as exc:
-        logger.exception("Video generation failed")
-        raise HTTPException(500, str(exc)) from exc
-
+        raise HTTPException(500, str(exc))
 
 # ---------------------------------------------------------------------------
 # Full pipeline – fire-and-forget via BackgroundTasks
 # ---------------------------------------------------------------------------
-_job_store: dict[str, dict] = {}   # in-memory; swap for Redis on Render
+_job_store: Dict[str, Dict] = {}
 
 def _run_full_pipeline(job_id: str, topic: str, language: str):
-    _job_store[job_id] = {"status": "running", "step": "research"}
+    _job_store[job_id]["status"] = "running"
     try:
-        research_data = research_engine.run(topic, language) if research_engine else ""
+        # 1. Research
+        _job_store[job_id]["step"] = "research"
+        research_data = research_engine.run(topic, language) if research_engine else f"Topic info for {topic}"
+        
+        # 2. Script
         _job_store[job_id]["step"] = "script"
-
-        script = deep_script.generate(research_data) if deep_script else ""
+        script = deep_script.generate(research_data) if deep_script else research_data
+        
+        # 3. Voice
         _job_store[job_id]["step"] = "voice"
-
-        voice_path = voice_engine.synthesize(script) if voice_engine else ""
+        voice_filename = f"voice_{job_id}.wav"
+        voice_path = str(STATIC_DIR / voice_filename)
+        if voice_engine:
+            voice_engine.synthesize_advanced(
+                script, 
+                language=language, 
+                output_path=voice_path,
+                # In basic pipeline, use defaults for age/gender
+                reduce_noise=True
+            )
+        
+        # 4. Images (Internet)
         _job_store[job_id]["step"] = "images"
-
-        image_paths = image_generator.generate(script, 5) if image_generator else []
-        _job_store[job_id]["step"] = "video"
-
-        video_path = (
-            video_generator.assemble(script, voice_path, image_paths)
-            if video_generator else ""
-        )
-
-        _job_store[job_id] = {
+        image_urls = image_generator.generate(script, 3) if image_generator else []
+        
+        # 5. Finalize (Video Generation Disabled)
+        _job_store[job_id].update({
             "status": "done",
-            "video_path": str(video_path),
-        }
-        logger.info("Pipeline %s complete → %s", job_id, video_path)
+            "step": "complete",
+            "script": script,
+            "images": image_urls,
+            "voice_path": f"/static/{voice_filename}"
+        })
+        logger.info("Pipeline %s complete (Ready: Script, Voice, Images).", job_id)
 
     except Exception as exc:
         logger.exception("Pipeline %s failed", job_id)
-        _job_store[job_id] = {"status": "error", "detail": str(exc)}
-
+        _job_store[job_id].update({"status": "error", "detail": str(exc)})
 
 @app.post("/api/pipeline")
 async def full_pipeline(req: ResearchRequest, background_tasks: BackgroundTasks):
-    import uuid
     job_id = str(uuid.uuid4())
-    _job_store[job_id] = {"status": "queued"}
+    _job_store[job_id] = {"status": "queued", "step": "starting", "topic": req.topic}
     background_tasks.add_task(_run_full_pipeline, job_id, req.topic, req.language)
     return {"job_id": job_id, "status": "queued"}
-
 
 @app.get("/api/pipeline/{job_id}")
 async def pipeline_status(job_id: str):
     job = _job_store.get(job_id)
-    if job is None:
-        raise HTTPException(404, "Job not found")
+    if not job: raise HTTPException(404, "Job not found")
     return job
 
+# ---------------------------------------------------------------------------
+# Flutter API Compat (/api/generate)
+# ---------------------------------------------------------------------------
+@app.post("/api/generate")
+async def api_generate(text: str = Form(None), voice: UploadFile = File(None)):
+    if not text or not voice: return {"error": "Missing data"}
+
+    speaker_file = f"speaker_{uuid.uuid4()}.wav"
+    with open(speaker_file, "wb") as f: f.write(await voice.read())
+
+    output_name = f"voice_{uuid.uuid4()}.wav"
+    output_path = STATIC_DIR / output_name
+
+    try:
+        if voice_engine:
+            voice_engine.synthesize_advanced(
+                text=text,
+                output_path=str(output_path),
+                speaker_wav=speaker_file,
+                language="hi",
+                reduce_noise=True # Auto enable for Flutter uploads
+            )
+            # Cleanup temp speaker file
+            if os.path.exists(speaker_file): os.remove(speaker_file)
+        else:
+            return {"error": "TTS Engine not available"}
+    except Exception as e:
+        return {"error": str(e)}
+
+    return FileResponse(output_path, filename=output_name)
 
 # ---------------------------------------------------------------------------
-# Dev entry point (production uses uvicorn main:app directly)
+# Dev entry point
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=int(os.environ.get("PORT", 8000)),
-        reload=False,   # never True in production
-        log_level="info",
-    )
+    uvicorn.run("main:app", host="0.0.0.0", port=int(os.environ.get("PORT", 8000)), reload=True)

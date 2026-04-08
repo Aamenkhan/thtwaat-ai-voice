@@ -1,4 +1,24 @@
+# Core Framework
 fastapi
 uvicorn
 jinja2
 python-multipart
+pydantic
+python-dotenv
+requests
+
+# AI Generation
+# Note: torch is handled separately in Dockerfile for CUDA support
+diffusers[torch]
+transformers
+accelerate
+TTS
+
+# Media Processing
+moviepy
+Pillow
+numpy
+scipy
+noisereduce
+librosa
+soundfile
