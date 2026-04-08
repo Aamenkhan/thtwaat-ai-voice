@@ -77,8 +77,8 @@ class ViR(BaseModel):
     image_urls: List[str]  = Field(default_factory=list)
 
 @app.get("/")
-async def root():
-    return JSONResponse({"message": "API working 🚀"})
+def home():
+    return {"message": "API working 🚀"}
 
 @app.get("/health")
 async def health():
